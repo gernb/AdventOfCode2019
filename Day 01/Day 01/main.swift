@@ -30,7 +30,7 @@ print("Fuel required for 100756: \(fuelRequired(for: 100756))")
 let part1 = InputData.challenge.map(fuelRequired).reduce(0, +)
 print("Part 1 answer: \(part1)")
 
-// MARK - Part 2
+// MARK: - Part 2
 print("")
 
 func actualFuelRequired(for mass: Int) -> Int {
