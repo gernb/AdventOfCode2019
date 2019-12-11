@@ -25,78 +25,98 @@ struct Coordinate: Hashable, CustomStringConvertible {
 enum Heading {
     case left, up, right, down
 
-    mutating func turnLeft() {
+    var left: Heading {
         switch self {
-        case .left: self = .down
-        case .up: self = .left
-        case .right: self = .up
-        case .down: self = .right
+        case .left: return .down
+        case .up: return .left
+        case .right: return .up
+        case .down: return .right
         }
     }
 
-    mutating func turnRight() {
+    var right: Heading {
         switch self {
-        case .left: self = .up
-        case .up: self = .right
-        case .right: self = .down
-        case .down: self = .left
+        case .left: return .up
+        case .up: return .right
+        case .right: return .down
+        case .down: return .left
         }
     }
 }
 
-enum Colour: Int {
+enum Colour: Int64 {
     case black = 0
     case white = 1
 }
 
-let robot = IntCodeComputer(program: InputData.challenge)
+enum Turn: Int64 {
+    case left = 0
+    case right = 1
+}
+
+enum OutputState {
+    case paint
+    case turn
+}
+
+extension Coordinate {
+    mutating func move(_ direction: Heading) {
+        switch direction {
+        case .left: self = self.left
+        case .up: self = self.up
+        case .right: self = self.right
+        case .down: self = self.down
+        }
+    }
+}
+
+extension Heading {
+    mutating func turn(_ direction: Turn) {
+        switch direction {
+        case .left: self = self.left
+        case .right: self = self.right
+        }
+    }
+}
+
 var panels: [Coordinate: Colour] = [:]
 var position = Coordinate(x: 0, y: 0)
 var heading = Heading.up
+var nextOutput = OutputState.paint
 
-// Part 2
-robot.addInput(1)
-// Part 2
+func inputProvider() -> Int64 {
+    return panels[position, default: .black].rawValue
+}
 
-var state: IntCodeComputer.State
-repeat {
-    state = robot.run()
+func outputHandler(value: Int64) {
+    switch nextOutput {
+    case .paint:
+        let colour = Colour(rawValue: value)!
+        panels[position] = colour
+        nextOutput = .turn
 
-    var output = robot.consumeOutput()
-    if output.isEmpty == false {
-        let paint = Colour(rawValue: Int(output.removeFirst()))!
-        panels[position] = paint
+    case .turn:
+        let direction = Turn(rawValue: value)!
+        heading.turn(direction)
+        position.move(heading)
+        nextOutput = .paint
     }
-    if output.isEmpty == false {
-        let turn = output.removeFirst()
-        switch turn {
-        case 0: heading.turnLeft()
-        case 1: heading.turnRight()
-        default: preconditionFailure("Unexpected turn command")
-        }
-        switch heading {
-        case .left: position = position.left
-        case .up: position = position.up
-        case .right: position = position.right
-        case .down: position = position.down
-        }
-    }
+}
 
-    switch state {
-    case .waitingForInput:
-        let paint = panels[position, default: .black].rawValue
-        robot.addInput(Int64(paint))
-    case .halted:
-        break
-    case .invalidInstruction:
-        preconditionFailure("Invalid instruction!")
-    }
+// MARK: Part 1
 
-} while state == .waitingForInput
-
+var robot = IntCodeComputer(program: InputData.challenge, inputProvider: inputProvider, outputHandler: outputHandler)
+robot.run()
 print(panels.count)
 
 // MARK: Part 2
+
+robot = IntCodeComputer(program: InputData.challenge, inputProvider: inputProvider, outputHandler: outputHandler)
+position = Coordinate(x: 0, y: 0)
+panels = [position: .white]
+heading = .up
+nextOutput = .paint
+robot.run()
 
 let xSorted = panels.keys.sorted { $0.x < $1.x }
 let minX = xSorted.first!.x

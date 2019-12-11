@@ -15,18 +15,23 @@ final class IntCodeComputer {
     private(set) var input: [Int64]
     private(set) var output: [Int64]
 
+    var inputProvider: (() -> Int64)?
+    var outputHandler: ((Int64) -> Void)?
+
     enum State {
         case waitingForInput
         case halted
         case invalidInstruction
     }
 
-    init(program: [Int64], input: [Int64] = []) {
+    init(program: [Int64], input: [Int64] = [], inputProvider: (() -> Int64)? = nil, outputHandler: ((Int64) -> Void)? = nil) {
         self.code = [:]
         self.ip = 0
         self.relativeBase = 0
         self.input = input
         self.output = []
+        self.inputProvider = inputProvider
+        self.outputHandler = outputHandler
 
         program.enumerated().forEach { code[Int64($0)] = $1 }
     }
@@ -86,19 +91,29 @@ final class IntCodeComputer {
                 ip += 4
 
             case 3: // input
-                if input.isEmpty {
-                    return .waitingForInput
+                let inputValue: Int64
+                if let inputProvider = inputProvider {
+                    inputValue = inputProvider()
+                } else {
+                    if input.isEmpty {
+                        return .waitingForInput
+                    }
+                    inputValue = input.removeFirst()
                 }
                 assert(instruction.first != .immediate)
                 let param1 = code[ip + 1, default: 0]
                 let destination = instruction.first == .position ? param1 : relativeBase + param1
-                code[destination] = input.removeFirst()
+                code[destination] = inputValue
                 ip += 2
 
             case 4: // output
                 let param = code[ip + 1, default: 0]
                 let value = getValue(from: param, for: instruction.first)
-                output.append(value)
+                if let outputHandler = outputHandler {
+                    outputHandler(value)
+                } else {
+                    output.append(value)
+                }
                 ip += 2
 
             case 5: // jump-if-true
