@@ -12,6 +12,8 @@ struct Coordinate: Hashable, CustomStringConvertible {
     let x: Int
     let y: Int
 
+    static let origin = Coordinate(x: 0, y: 0)
+
     var up: Coordinate { return Coordinate(x: x, y: y - 1) }
     var down: Coordinate { return Coordinate(x: x, y: y + 1) }
     var left: Coordinate { return Coordinate(x: x - 1, y: y) }
@@ -44,12 +46,12 @@ enum Heading {
     }
 }
 
-enum Colour: Int64 {
+enum Colour: Int {
     case black = 0
     case white = 1
 }
 
-enum Turn: Int64 {
+enum Turn: Int {
     case left = 0
     case right = 1
 }
@@ -80,15 +82,15 @@ extension Heading {
 }
 
 var panels: [Coordinate: Colour] = [:]
-var position = Coordinate(x: 0, y: 0)
+var position = Coordinate.origin
 var heading = Heading.up
 var nextOutput = OutputState.paint
 
-func inputProvider() -> Int64 {
+func inputProvider() -> Int {
     return panels[position, default: .black].rawValue
 }
 
-func outputHandler(value: Int64) {
+func outputHandler(value: Int) {
     switch nextOutput {
     case .paint:
         let colour = Colour(rawValue: value)!
@@ -105,15 +107,15 @@ func outputHandler(value: Int64) {
 
 // MARK: Part 1
 
-var robot = IntCodeComputer(program: InputData.challenge, inputProvider: inputProvider, outputHandler: outputHandler)
+var robot = IntCodeComputer(program: InputData.challenge, input: inputProvider, output: outputHandler)
 robot.run()
 print(panels.count)
 
 // MARK: Part 2
 
-robot = IntCodeComputer(program: InputData.challenge, inputProvider: inputProvider, outputHandler: outputHandler)
-position = Coordinate(x: 0, y: 0)
-panels = [position: .white]
+robot.reset()
+position = .origin
+panels = [.origin: .white]
 heading = .up
 nextOutput = .paint
 robot.run()
