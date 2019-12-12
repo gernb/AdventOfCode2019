@@ -38,87 +38,64 @@ final class IntCodeComputer {
     @discardableResult
     func run() -> State {
         repeat {
-            let instruction = getModesAndOpcode(from: memory[ip]!)
+            let instruction = decode(value: self[ip])
 
             switch instruction.opcode {
             case 99: // halt
                 return .halted
 
             case 1: // addition
-                assert(instruction.third != .immediate)
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let param3 = memory[ip + 3, default: 0]
-                let left = getValue(from: param1, for: instruction.first)
-                let right = getValue(from: param2, for: instruction.second)
-                let destination = instruction.third == .position ? param3 : relativeBase + param3
-                memory[destination] = left + right
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                let param3 = self[ip + 3]
+                self[param3, instruction.p3Mode] = self[param1, instruction.p1Mode] + self[param2, instruction.p2Mode]
                 ip += 4
 
             case 2: // multiplication
-                assert(instruction.third != .immediate)
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let param3 = memory[ip + 3, default: 0]
-                let left = getValue(from: param1, for: instruction.first)
-                let right = getValue(from: param2, for: instruction.second)
-                let destination = instruction.third == .position ? param3 : relativeBase + param3
-                memory[destination] = left * right
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                let param3 = self[ip + 3]
+                self[param3, instruction.p3Mode] = self[param1, instruction.p1Mode] * self[param2, instruction.p2Mode]
                 ip += 4
 
             case 3: // input
-                assert(instruction.first != .immediate)
-                let param1 = memory[ip + 1, default: 0]
-                let destination = instruction.first == .position ? param1 : relativeBase + param1
-                memory[destination] = inputProvider()
+                let param1 = self[ip + 1]
+                self[param1, instruction.p1Mode] = inputProvider()
                 ip += 2
 
             case 4: // output
-                let param = memory[ip + 1, default: 0]
-                let value = getValue(from: param, for: instruction.first)
+                let param1 = self[ip + 1]
+                let value = self[param1, instruction.p1Mode]
                 outputHandler(value)
                 ip += 2
 
             case 5: // jump-if-true
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let value = getValue(from: param1, for: instruction.first)
-                let newIP = getValue(from: param2, for: instruction.second)
-                ip = value != 0 ? newIP : ip + 3
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                ip = self[param1, instruction.p1Mode] != 0 ? self[param2, instruction.p2Mode] : ip + 3
 
             case 6: // jump-if-false
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let value = getValue(from: param1, for: instruction.first)
-                let newIP = getValue(from: param2, for: instruction.second)
-                ip = value == 0 ? newIP : ip + 3
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                ip = self[param1, instruction.p1Mode] == 0 ? self[param2, instruction.p2Mode] : ip + 3
 
             case 7: // less than
-                assert(instruction.third != .immediate)
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let param3 = memory[ip + 3, default: 0]
-                let left = getValue(from: param1, for: instruction.first)
-                let right = getValue(from: param2, for: instruction.second)
-                let destination = instruction.third == .position ? param3 : relativeBase + param3
-                memory[destination] = left < right ? 1 : 0
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                let param3 = self[ip + 3]
+                self[param3, instruction.p3Mode] = self[param1, instruction.p1Mode] < self[param2, instruction.p2Mode] ? 1 : 0
                 ip += 4
 
             case 8: // equals
-                assert(instruction.third != .immediate)
-                let param1 = memory[ip + 1, default: 0]
-                let param2 = memory[ip + 2, default: 0]
-                let param3 = memory[ip + 3, default: 0]
-                let left = getValue(from: param1, for: instruction.first)
-                let right = getValue(from: param2, for: instruction.second)
-                let destination = instruction.third == .position ? param3 : relativeBase + param3
-                memory[destination] = left == right ? 1 : 0
+                let param1 = self[ip + 1]
+                let param2 = self[ip + 2]
+                let param3 = self[ip + 3]
+                self[param3, instruction.p3Mode] = self[param1, instruction.p1Mode] == self[param2, instruction.p2Mode] ? 1 : 0
                 ip += 4
 
             case 9: // adjusts the relative base
-                let param = memory[ip + 1, default: 0]
-                let value = getValue(from: param, for: instruction.first)
-                relativeBase += value
+                let param1 = self[ip + 1]
+                relativeBase += self[param1, instruction.p1Mode]
                 ip += 2
 
             default:
@@ -127,21 +104,34 @@ final class IntCodeComputer {
         } while true
     }
 
-    private typealias Instruction = (third: Mode, second: Mode, first: Mode, opcode: Int)
-
-    private func getModesAndOpcode(from instruction: Int) -> Instruction {
-        assert(instruction > 0 && instruction < 100_000)
-        return (Mode(rawValue: (instruction / 10000) % 10)!,
-                Mode(rawValue: (instruction / 1000) % 10)!,
-                Mode(rawValue: (instruction / 100) % 10)!,
-                instruction % 100)
+    subscript(address: Int) -> Int {
+        get { memory[address, default: 0] }
     }
 
-    private func getValue(from param: Int, for mode: Mode) -> Int {
-        switch mode {
-        case .position: return memory[param, default: 0]
-        case .immediate: return param
-        case .relative: return memory[relativeBase + param, default: 0]
+    private typealias Instruction = (p3Mode: Mode, p2Mode: Mode, p1Mode: Mode, opcode: Int)
+
+    private func decode(value: Int) -> Instruction {
+        assert(value > 0 && value < 100_000)
+        return (Mode(rawValue: (value / 10000) % 10)!,
+                Mode(rawValue: (value / 1000) % 10)!,
+                Mode(rawValue: (value / 100) % 10)!,
+                value % 100)
+    }
+
+    private subscript(param: Int, mode: Mode) -> Int {
+        get {
+            switch mode {
+            case .position: return memory[param, default: 0]
+            case .immediate: return param
+            case .relative: return memory[relativeBase + param, default: 0]
+            }
+        }
+        set {
+            switch mode {
+            case .position: memory[param] = newValue
+            case .immediate: preconditionFailure("Writing to 'immediate' mode unsupported")
+            case .relative: memory[relativeBase + param] = newValue
+            }
         }
     }
 
