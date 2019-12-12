@@ -9,9 +9,9 @@
 import Foundation
 
 struct Vector: Hashable, CustomStringConvertible {
-    let x: Int
-    let y: Int
-    let z: Int
+    var x: Int
+    var y: Int
+    var z: Int
 
     static let zero = Vector(x: 0, y: 0, z: 0)
 
@@ -21,6 +21,10 @@ struct Vector: Hashable, CustomStringConvertible {
 
     static func + (lhs: Vector, rhs: Vector) -> Vector {
         return Vector(x: lhs.x + rhs.x, y: lhs.y + rhs.y, z: lhs.z + rhs.z)
+    }
+
+    static func += (lhs: inout Vector, rhs: Vector) {
+        lhs = lhs + rhs
     }
 }
 
@@ -37,12 +41,13 @@ extension Vector {
     }
 }
 
-final class Moon: CustomStringConvertible {
+struct Moon: Hashable, CustomStringConvertible {
     var position: Vector
-    var velocity: Vector = .zero
+    var velocity: Vector
 
-    init(position: Vector) {
+    init(position: Vector, velocity: Vector = .zero) {
         self.position = position
+        self.velocity = velocity
     }
 
     var description: String { "<pos=\(position) vel=\(velocity)" }
@@ -51,76 +56,85 @@ final class Moon: CustomStringConvertible {
     var totalEnergy: Int { potentialEnergy * kineticEnergy }
 }
 
-func performStep(moons: [Moon]) {
-    // apply gravity
-    for x in 0 ..< (moons.count - 1) {
-        for y in (x + 1) ..< moons.count {
-            let moon1 = moons[x]
-            let moon2 = moons[y]
-            var delta1: (x: Int, y: Int, z: Int) = (0, 0, 0)
-            var delta2: (x: Int, y: Int, z: Int) = (0, 0, 0)
-            if moon1.position.x < moon2.position.x {
-                delta1.x = 1
-                delta2.x = -1
-            } else if moon1.position.x > moon2.position.x {
-                delta1.x = -1
-                delta2.x = 1
-            }
-            if moon1.position.y < moon2.position.y {
-                delta1.y = 1
-                delta2.y = -1
-            } else if moon1.position.y > moon2.position.y {
-                delta1.y = -1
-                delta2.y = 1
-            }
-            if moon1.position.z < moon2.position.z {
-                delta1.z = 1
-                delta2.z = -1
-            } else if moon1.position.z > moon2.position.z {
-                delta1.z = -1
-                delta2.z = 1
-            }
-            moon1.velocity = moon1.velocity + Vector(x: delta1.x, y: delta1.y, z: delta1.z)
-            moon2.velocity = moon2.velocity + Vector(x: delta2.x, y: delta2.y, z: delta2.z)
-        }
-    }
+struct SystemState: Hashable, CustomStringConvertible {
+    var moons: [Moon]
 
-    // apply velocity
-    for moon in moons {
-        moon.position = moon.position + moon.velocity
+    var description: String { moons.map { $0.description }.joined(separator: "\n") }
+    var totalEnergy: Int { moons.map { $0.totalEnergy }.reduce(0, +) }
+
+    func nextState() -> SystemState {
+        var moons = self.moons
+
+        // apply gravity
+        for x in 0 ..< (moons.count - 1) {
+            for y in (x + 1) ..< moons.count {
+                let moon1 = moons[x]
+                let moon2 = moons[y]
+                var delta1 = Vector.zero
+                var delta2 = Vector.zero
+                if moon1.position.x < moon2.position.x {
+                    delta1.x = 1
+                    delta2.x = -1
+                } else if moon1.position.x > moon2.position.x {
+                    delta1.x = -1
+                    delta2.x = 1
+                }
+                if moon1.position.y < moon2.position.y {
+                    delta1.y = 1
+                    delta2.y = -1
+                } else if moon1.position.y > moon2.position.y {
+                    delta1.y = -1
+                    delta2.y = 1
+                }
+                if moon1.position.z < moon2.position.z {
+                    delta1.z = 1
+                    delta2.z = -1
+                } else if moon1.position.z > moon2.position.z {
+                    delta1.z = -1
+                    delta2.z = 1
+                }
+                moons[x].velocity += delta1
+                moons[y].velocity += delta2
+            }
+        }
+
+        // apply velocity
+        moons = moons.map { Moon(position: $0.position + $0.velocity, velocity: $0.velocity) }
+
+        return SystemState(moons: moons)
     }
 }
 
 // MARK: Part 1
 
 func part1(moons: [Moon], steps: Int) {
+    var state = SystemState(moons: moons)
     (1 ... steps).forEach { step in
-        performStep(moons: moons)
+        state = state.nextState()
 //        print("After step \(step):")
-//        print(moons.map { $0.description }.joined(separator: "\n"))
-//        print("Total system energy: \(moons.map { $0.totalEnergy }.reduce(0, +))\n")
+//        print(state)
+//        print("Total system energy: \(state.totalEnergy)\n")
     }
-    print("Total system energy: \(moons.map { $0.totalEnergy }.reduce(0, +))\n")
+    print("Total system energy: \(state.totalEnergy)")
 }
 
-var example0 = InputData.example0.map(Vector.init).map(Moon.init)
-part1(moons: example0, steps: 10)
-
-var example1 = InputData.example1.map(Vector.init).map(Moon.init)
-part1(moons: example1, steps: 100)
-
-var challenge = InputData.challenge.map(Vector.init).map(Moon.init)
-part1(moons: challenge, steps: 1000)
+part1(moons: InputData.example0.map(Vector.init).map { Moon(position: $0) }, steps: 10)
+part1(moons: InputData.example1.map(Vector.init).map { Moon(position: $0) }, steps: 100)
+part1(moons: InputData.challenge.map(Vector.init).map { Moon(position: $0) }, steps: 1000)
+print("")
 
 // MARK: Part 2
 
-struct Axis: Hashable {
-    let pos: Int
-    let vel: Int
+struct AxisState: Hashable {
+    struct SingleAxis: Hashable {
+        let pos: Int
+        let vel: Int
+    }
 
-    init(moon: Moon, keypath: KeyPath<Vector, Int>) {
-        self.pos = moon.position[keyPath: keypath]
-        self.vel = moon.velocity[keyPath: keypath]
+    let moons: [SingleAxis]
+
+    init(moons: [Moon], axis: KeyPath<Vector, Int>) {
+        self.moons = moons.map { SingleAxis(pos: $0.position[keyPath: axis], vel: $0.velocity[keyPath: axis]) }
     }
 }
 
@@ -142,45 +156,36 @@ func lcm(_ m: Int, _ n: Int) -> Int {
 }
 
 func part2(moons: [Moon]) {
-    var stateX = moons.map { Axis(moon: $0, keypath: \Vector.x) }
-    var seenX = Set([stateX.hashValue])
-    var stateY = moons.map { Axis(moon: $0, keypath: \Vector.y) }
-    var seenY = Set([stateY.hashValue])
-    var stateZ = moons.map { Axis(moon: $0, keypath: \Vector.z) }
-    var seenZ = Set([stateZ.hashValue])
+    var systemState = SystemState(moons: moons)
+    var visited: [Set<AxisState>] = [Set(), Set(), Set()]
     var steps = 0
-    var stepsX: Int?
-    var stepsY: Int?
-    var stepsZ: Int?
+    var periods = [0, 0, 0]
+    let axes = [\Vector.x, \Vector.y, \Vector.z]
 
-    while stepsX == nil || stepsY == nil || stepsZ == nil {
-        performStep(moons: moons)
+    while periods.contains(0) {
+        let states = axes.map { AxisState(moons: systemState.moons, axis: $0) }
+
+        for axis in 0 ... 2 {
+            if periods[axis] > 0 {
+                continue
+            }
+            if visited[axis].contains(states[axis]) {
+                // found the period for this axis
+                periods[axis] = steps
+            } else {
+                visited[axis].insert(states[axis])
+            }
+        }
+
+        systemState = systemState.nextState()
         steps += 1
-        stateX = moons.map { Axis(moon: $0, keypath: \Vector.x) }
-        if seenX.contains(stateX.hashValue) {
-            stepsX = stepsX ?? steps
-        } else {
-            seenX.insert(stateX.hashValue)
-        }
-        stateY = moons.map { Axis(moon: $0, keypath: \Vector.y) }
-        if seenY.contains(stateY.hashValue) {
-            stepsY = stepsY ?? steps
-        } else {
-            seenY.insert(stateY.hashValue)
-        }
-        stateZ = moons.map { Axis(moon: $0, keypath: \Vector.z) }
-        if seenZ.contains(stateZ.hashValue) {
-            stepsZ = stepsZ ?? steps
-        } else {
-            seenZ.insert(stateZ.hashValue)
-        }
     }
 
-    print(stepsX!, stepsY!, stepsZ!)
-    let result = lcm(stepsX!, lcm(stepsY!, stepsZ!))
+    print(periods)
+    let result = lcm(periods[0], lcm(periods[1], periods[2]))
     print(result)
 }
 
-part2(moons: InputData.example0.map(Vector.init).map(Moon.init))
-part2(moons: InputData.example1.map(Vector.init).map(Moon.init))
-part2(moons: InputData.challenge.map(Vector.init).map(Moon.init))
+part2(moons: InputData.example0.map(Vector.init).map { Moon(position: $0) })
+part2(moons: InputData.example1.map(Vector.init).map { Moon(position: $0) })
+part2(moons: InputData.challenge.map(Vector.init).map { Moon(position: $0) })
