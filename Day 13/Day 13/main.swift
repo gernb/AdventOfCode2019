@@ -44,16 +44,22 @@ print(blockCount)
 
 // MARK: Part 2
 
-func draw(_ screen: [Coordinate: Tile], score: Int) {
-    let xSorted = screen.keys.sorted { $0.x < $1.x }
-    let minX = xSorted.first!.x
-    let maxX = xSorted.last!.x
-    let ySorted = screen.keys.sorted { $0.y < $1.y }
-    let minY = ySorted.first!.y
-    let maxY = ySorted.last!.y
+extension Collection where Element: Comparable {
+    func range() -> ClosedRange<Element> {
+        precondition(count > 0)
+        let sorted = self.sorted()
+        return sorted.first! ... sorted.last!
+    }
+}
 
-    for y in minY ... maxY {
-        for x in minX ... maxX {
+extension Dictionary where Key == Coordinate {
+    var xRange: ClosedRange<Int> { keys.map { $0.x }.range() }
+    var yRange: ClosedRange<Int> { keys.map { $0.y }.range() }
+}
+
+func draw(_ screen: [Coordinate: Tile], score: Int) {
+    for y in screen.yRange {
+        for x in screen.xRange {
             let pixel = screen[Coordinate(x: x, y: y), default: .empty]
             switch pixel {
             case .empty: print(" ", terminator: "")
