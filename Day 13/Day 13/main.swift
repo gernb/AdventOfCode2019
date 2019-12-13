@@ -23,7 +23,7 @@ enum Tile: Int {
     case empty = 0
     case wall = 1
     case block = 2
-    case horizontalPaddle = 3
+    case paddle = 3
     case ball = 4
 }
 
@@ -57,21 +57,30 @@ extension Dictionary where Key == Coordinate {
     var yRange: ClosedRange<Int> { keys.map { $0.y }.range() }
 }
 
+extension Tile: CustomStringConvertible {
+    var description: String {
+        switch self {
+        case .empty: return "⬛️"
+        case .wall: return "⬜️"
+        case .block: return "🟩"
+        case .paddle: return "🟦"
+        case .ball: return "🟣"
+        }
+    }
+}
+
 func draw(_ screen: [Coordinate: Tile], score: Int) {
-    for y in screen.yRange {
-        for x in screen.xRange {
+    let xRange = screen.xRange
+    let yRange = screen.yRange
+    print("\u{001b}c") // clear the terminal
+    print("Score: \(score)")
+    for y in yRange {
+        for x in xRange {
             let pixel = screen[Coordinate(x: x, y: y), default: .empty]
-            switch pixel {
-            case .empty: print(" ", terminator: "")
-            case .wall: print("#", terminator: "")
-            case .block: print("=", terminator: "")
-            case .horizontalPaddle: print("-", terminator: "")
-            case .ball: print("•", terminator: "")
-            }
+            print(pixel, terminator: "")
         }
         print("")
     }
-    print("Score: \(score)\n")
 }
 
 var ballPos = Coordinate.zero
@@ -112,12 +121,12 @@ let game = IntCodeComputer(program: InputData.challenge, input: inputProvider) {
             screen[coord] = tile
             if tile == .ball {
                 ballPos = coord
-            } else if tile == .horizontalPaddle {
+            } else if tile == .paddle {
                 paddlePos = coord
             }
         }
         output = []
-//        draw(screen, score: score)
+        draw(screen, score: score) // comment this out to make it run faster
     }
 }
 
