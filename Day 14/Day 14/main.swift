@@ -8,48 +8,31 @@
 
 import Foundation
 
-extension NSRegularExpression {
-    func matches(_ string: String) -> [Range<String.Index>] {
-        let range = NSRange(string.startIndex..., in: string)
-        return matches(in: string, range: range).map { result in
-            return Range(result.range, in: string)!
-        }
-    }
-}
-
-struct Chemical {
-    let id: String
+struct Reaction {
+    let chemical: String
     let formula: [(chemical: String, quantity: Int)]
     let quantity: Int
 }
 
-extension Chemical {
-    private init(formula: [(chemical: String, quantity: Int)]) {
-        let result = formula.last!
-        self.id = result.chemical
-        self.quantity = result.quantity
-        self.formula = Array(formula[0 ..< formula.count - 1])
+extension Reaction {
+    private init(input: [[String]], output: [String]) {
+        self.chemical = output[1]
+        self.quantity = Int(output[0])!
+        self.formula = input.map { ($0[1], Int($0[0])!) }
     }
 
-    private static let chemicalRegex = try! NSRegularExpression(pattern: "[0-9]+ [A-Z]+")
-
-    static func load(from input: [String]) -> [String: Chemical] {
-        var result: [String: Chemical] = [:]
-        input.forEach { line in
-            let parts = Self.chemicalRegex.matches(line)
-                .map { line[$0] }
-                .map { part -> (chemical: String, quantity: Int) in
-                    let foo = part.split(separator: " ")
-                    return (String(foo[1]), Int(foo[0])!)
-                }
-            let chemical = Chemical(formula: parts)
-            result[chemical.id] = chemical
+    static func load(from input: [String]) -> [String: Reaction] {
+        return input.map { line -> Reaction in
+            let parts = line.components(separatedBy: " => ")
+            let input = parts[0].components(separatedBy: ", ").map { $0.components(separatedBy: " ")}
+            let output = parts[1].components(separatedBy: " ")
+            return Reaction(input: input, output: output)
         }
-        return result
+        .reduce(into: [:]) { result, next in result[next.chemical] = next }
     }
 }
 
-func part1(_ reactions: [String: Chemical]) -> Int {
+func part1(_ reactions: [String: Reaction]) -> Int {
     var consumedOre = 0
     var remainders: [String: Int] = [:]
     var chemicals: [(chemical: String, quantity: Int)] = [("FUEL", 1)]
@@ -73,13 +56,13 @@ func part1(_ reactions: [String: Chemical]) -> Int {
     return consumedOre
 }
 
-let reactions = Chemical.load(from: InputData.challenge)
+let reactions = Reaction.load(from: InputData.challenge)
 
 print("ORE required:", part1(reactions))
 
 // MARK: Part 2
 
-func part2(_ reactions: [String: Chemical], fuel: Int) -> Int {
+func part2(_ reactions: [String: Reaction], fuel: Int) -> Int {
     var consumedOre = 0
     var remainders: [String: Int] = [:]
     var neededChemicals: [String: Int] = ["FUEL": fuel]

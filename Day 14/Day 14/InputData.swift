@@ -14,7 +14,7 @@ struct InputData {
 7 A, 1 C => 1 D
 7 A, 1 D => 1 E
 7 A, 1 E => 1 FUEL
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 
     static let example1 = """
 9 ORE => 2 A
@@ -24,7 +24,7 @@ struct InputData {
 5 B, 7 C => 1 BC
 4 C, 1 A => 1 CA
 2 AB, 3 BC, 4 CA => 1 FUEL
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 
     static let example2 = """
 157 ORE => 5 NZVS
@@ -36,7 +36,7 @@ struct InputData {
 7 DCFZ, 7 PSHF => 2 XJWVT
 165 ORE => 2 GPVTF
 3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 
     static let example3 = """
 2 VPVL, 7 FWMGM, 2 CXFTF, 11 MNCFX => 1 STKFG
@@ -51,7 +51,7 @@ struct InputData {
 1 NVRVD => 8 CXFTF
 1 VJHF, 6 MNCFX => 4 RFSQX
 176 ORE => 6 VJHF
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 
     static let example4 = """
 171 ORE => 8 CNZTR
@@ -71,7 +71,7 @@ struct InputData {
 121 ORE => 7 VRPVC
 7 XCVML => 6 RJRHP
 5 BHXH, 4 VRPVC => 5 LTCX
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 
     static let challenge = """
 1 JNDQ, 11 PHNC => 7 LBJSB
@@ -137,5 +137,5 @@ struct InputData {
 3 VKHN, 8 TJQDC => 4 MJCD
 1 QBJLJ => 4 ZVHX
 1 MHQGW, 4 ZVHX => 3 BDKZM
-""".split(separator: "\n").map(String.init)
+""".components(separatedBy: "\n")
 }
