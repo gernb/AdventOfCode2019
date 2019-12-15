@@ -50,15 +50,16 @@ struct Coordinate: Hashable, CustomStringConvertible {
 }
 
 enum Tile: CustomStringConvertible {
-    case unknown, droid, wall, empty, oxygen
+    case unknown, droid, wall, empty, oxygen, path
 
     var description: String {
         switch self {
-        case .unknown: return " "
-        case .droid: return "D"
-        case .wall: return "#"
-        case .empty: return "."
-        case .oxygen: return "•"
+        case .unknown: return "  "
+        case .droid: return "🟥"
+        case .wall: return "⬜️"
+        case .empty: return "⬛️"
+        case .oxygen: return "🟦"
+        case .path: return "🟨"
         }
     }
 }
@@ -94,6 +95,7 @@ extension Dictionary where Key == Coordinate {
             }
             print("")
         }
+//        usleep(100000)
     }
 }
 
@@ -121,6 +123,9 @@ func findPathToOxygenSystem() -> [Direction] {
 
     }, output: { value in
 
+        defer {
+            map.draw(default: .unknown, clearScreen: true)
+        }
         switch StatusCode(rawValue: value)! {
         case .wall:
             map[position.move(nextDirection)] = .wall
@@ -137,25 +142,30 @@ func findPathToOxygenSystem() -> [Direction] {
                 path.append((prevPosition, nextDirection))
             }
         case .oxygenFound:
+            let prevPosition = position
             map[position] = .empty
             position = position.move(nextDirection)
             map[position] = .oxygen
-            path.append((position, nextDirection))
-            map.draw(default: .unknown, clearScreen: true)
-            print("Success!")
+            path.append((prevPosition, nextDirection))
             return false
         }
-        map.draw(default: .unknown, clearScreen: true)
         return true
 
     })
 
     robot.run()
+
+    // visualise the path
+    path.forEach { map[$0.coord] = .path }
+    map[.origin] = .droid
+    map.draw(default: .unknown, clearScreen: true)
+
     return path.map { $0.dir }
 }
 
 let result = findPathToOxygenSystem()
 print("Moves to the oxygen system:", result.count)
+_ = readLine()
 
 // MARK: Part 2
 
@@ -164,7 +174,7 @@ func mapTheRoom() -> [Coordinate: Tile] {
     var position = Coordinate.origin
     var nextDirection = Direction.north
     var map: [Coordinate: Tile] = [position: .droid]
-    var oxygenSystemPosition = Coordinate.origin
+    var oxygenSystemPosition: Coordinate? = nil
 
     let robot = IntCodeComputer(program: InputData.challenge, input: {
 
@@ -182,6 +192,9 @@ func mapTheRoom() -> [Coordinate: Tile] {
 
     }, output: { value in
 
+        defer {
+            map.draw(default: .unknown, clearScreen: true)
+        }
         let code = StatusCode(rawValue: value)!
         switch code {
         case .wall:
@@ -192,7 +205,7 @@ func mapTheRoom() -> [Coordinate: Tile] {
             if code == .oxygenFound {
                 oxygenSystemPosition = position
             }
-            map[prevPosition] = .empty
+            map[prevPosition] = (prevPosition == oxygenSystemPosition) ? .oxygen : .empty
             map[position] = .droid
             let lastPos = path.last?.coord
             if lastPos == position {
@@ -208,9 +221,6 @@ func mapTheRoom() -> [Coordinate: Tile] {
     })
 
     robot.run()
-    map[oxygenSystemPosition] = .oxygen
-    map[.origin] = .empty
-    map.draw(default: .unknown, clearScreen: true)
     return map
 }
 

@@ -29,6 +29,7 @@
 		90F7E21C23A5CB8100DDCCB7 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		90F7E22323A5CBB300DDCCB7 /* InputData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputData.swift; sourceTree = "<group>"; };
 		90F7E22523A5CC5600DDCCB7 /* IntCodeComputer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IntCodeComputer.swift; sourceTree = "<group>"; };
+		90F7E22723A6C1C800DDCCB7 /* Visualisation.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Visualisation.mov; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +62,7 @@
 		90F7E21B23A5CB8100DDCCB7 /* Day 15 */ = {
 			isa = PBXGroup;
 			children = (
+				90F7E22723A6C1C800DDCCB7 /* Visualisation.mov */,
 				90F7E22323A5CBB300DDCCB7 /* InputData.swift */,
 				90F7E22523A5CC5600DDCCB7 /* IntCodeComputer.swift */,
 				90F7E21C23A5CB8100DDCCB7 /* main.swift */,
