@@ -86,7 +86,7 @@ extension Dictionary where Key == Coordinate {
         let xRange = self.xRange
         let yRange = self.yRange
         if clearScreen {
-            print("\u{001b}c") // clear the terminal
+            print("\u{001b}[H") // send the cursor home
         }
         for y in yRange {
             for x in xRange {
@@ -95,7 +95,6 @@ extension Dictionary where Key == Coordinate {
             }
             print("")
         }
-//        usleep(100000)
     }
 }
 
@@ -165,7 +164,9 @@ func findPathToOxygenSystem() -> [Direction] {
 
 let result = findPathToOxygenSystem()
 print("Moves to the oxygen system:", result.count)
-_ = readLine()
+//_ = readLine()
+sleep(1)
+print("\u{001b}c") // reset the terminal
 
 // MARK: Part 2
 
