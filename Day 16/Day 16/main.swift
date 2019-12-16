@@ -38,7 +38,7 @@ func part1(signal: [Int]) -> String {
 
 print(part1(signal: InputData.example1), InputData.example1result)
 print(part1(signal: InputData.example2), InputData.example2result)
-print(part1(signal: InputData.example3), InputData.example3result)y
+print(part1(signal: InputData.example3), InputData.example3result)
 print(part1(signal: InputData.challenge))
 
 // MARK: Part 2
