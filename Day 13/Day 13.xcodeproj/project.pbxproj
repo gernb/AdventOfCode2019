@@ -25,6 +25,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		90F7E22823A706BF00DDCCB7 /* Visualisation.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = Visualisation.mov; sourceTree = "<group>"; };
 		90F80FEC23A33BC900B74510 /* Day 13 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "Day 13"; sourceTree = BUILT_PRODUCTS_DIR; };
 		90F80FEF23A33BC900B74510 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		90F80FF623A33BDD00B74510 /* InputData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputData.swift; sourceTree = "<group>"; };
@@ -61,6 +62,7 @@
 		90F80FEE23A33BC900B74510 /* Day 13 */ = {
 			isa = PBXGroup;
 			children = (
+				90F7E22823A706BF00DDCCB7 /* Visualisation.mov */,
 				90F80FF623A33BDD00B74510 /* InputData.swift */,
 				90F80FF823A352D900B74510 /* IntCodeComputer.swift */,
 				90F80FEF23A33BC900B74510 /* main.swift */,

@@ -60,7 +60,7 @@ extension Dictionary where Key == Coordinate {
 extension Tile: CustomStringConvertible {
     var description: String {
         switch self {
-        case .empty: return "⬛️"
+        case .empty: return "  "
         case .wall: return "⬜️"
         case .block: return "🟩"
         case .paddle: return "🟦"
@@ -72,7 +72,7 @@ extension Tile: CustomStringConvertible {
 func draw(_ screen: [Coordinate: Tile], score: Int) {
     let xRange = screen.xRange
     let yRange = screen.yRange
-    print("\u{001b}c") // clear the terminal
+    print("\u{001b}[H", terminator: "") // send the cursor home
     print("Score: \(score)")
     for y in yRange {
         for x in xRange {
