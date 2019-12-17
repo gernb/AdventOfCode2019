@@ -188,48 +188,41 @@ func getPathCommands(startingFrom start: Position, with map: [[Substring.Element
     }
 }
 
-func buildRules(for path: String) -> (main: String, a: String, b: String, c: String) {
-    func findLargestSubstringFromEnd(in value: String) -> String {
-        var len = 1
-        repeat {
-            let substring = value.suffix(len)
-            if substring.contains("A") || substring.contains("B") || !value.dropLast(len).contains(substring) {
-                // substring must start with an L or R
-                var substring = value.suffix(len - 1)
-                while !(substring.first == "L" || substring.first == "R") {
-                    substring = substring.dropFirst()
+// Asumptions:
+//   each "method" must contain at least 2 turns and 2 moves
+//   the input path consists of alternating turns and moves
+func compress(path: String) -> (main: String, a: String, b: String, c: String) {
+    for x in 4...10 {
+        let symbolsA = path.components(separatedBy: ",")
+        let a = symbolsA[0..<x].joined(separator: ",")
+        assert(a.count <= 20, "Method A too big!")
+
+        for y in 4...10 {
+            let compressed = path.replacingOccurrences(of: a, with: "A")
+            let symbolsB = Array(compressed.components(separatedBy: ",").drop { $0 == "A" })
+            let b = symbolsB[0..<min(y, symbolsB.count)].joined(separator: ",")
+            if b.count > 20 || b.contains("A") { break }
+
+            for z in 4...10 {
+                var moreCompressed = compressed.replacingOccurrences(of: b, with: "B")
+                let symbolsC = Array(moreCompressed.components(separatedBy: ",").drop { $0 == "A" || $0 == "B" })
+                let c = symbolsC[0..<min(z, symbolsC.count)].joined(separator: ",")
+                if c.count > 20 || c.contains("A") || c.contains("B") { break }
+                moreCompressed = moreCompressed.replacingOccurrences(of: c, with: "C")
+
+                if moreCompressed.count <= 20 && !moreCompressed.contains("L") && !moreCompressed.contains("R") {
+                    return (moreCompressed, a, b, c)
                 }
-                return String(substring)
             }
-            len += 1
-        } while len < value.count
-        preconditionFailure()
+        }
     }
 
-    var main = path
-    let a = findLargestSubstringFromEnd(in: main)
-    main = main.replacingOccurrences(of: a, with: "A")
-
-    var temp = main
-    while temp.hasSuffix("A") {
-        temp = String(temp.dropLast(2))
-    }
-    let b = findLargestSubstringFromEnd(in: temp)
-    main = main.replacingOccurrences(of: b, with: "B")
-
-    temp = temp.replacingOccurrences(of: b, with: "B")
-    while temp.hasSuffix("A") || temp.hasSuffix("B") {
-        temp = String(temp.dropLast(2))
-    }
-    let c = findLargestSubstringFromEnd(in: temp)
-    main = main.replacingOccurrences(of: c, with: "C")
-
-    return (main, a, b, c)
+    preconditionFailure()
 }
 
 let start = getStartPosition(from: lines)
 let path = getPathCommands(startingFrom: start, with: lines)
-let rules = buildRules(for: path)
+let rules = compress(path: path)
 
 var rulesData = """
 \(rules.main)
