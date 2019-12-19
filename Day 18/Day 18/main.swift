@@ -117,28 +117,81 @@ extension Collection {
     }
 }
 
-func BFSFindShortestPath<Node: Hashable>(from start: Node, to target: Node, using getNextNodes: ((Node) -> [Node])) -> [Node]? {
+func BFSFindShortestPath<Node: Hashable>(from start: Node, using getNextNodes: ((Node) -> [Node]?)) -> [Node]? {
     typealias Path = [Node]
     var visited: [Node: Path] = [:]
     var queue: [(node: Node, path: Path)] = [(start, [])]
 
     while queue.isEmpty == false {
         var (node, path) = queue.removeFirst()
-        if node == target {
+        guard let nextNodes = getNextNodes(node) else {
             return path
         }
-        let nextNodes = getNextNodes(node)
         path.append(node)
-        nextNodes.forEach { nextNode in
+        for nextNode in nextNodes {
             if let previousPath = visited[nextNode], previousPath.count <= path.count {
-                return
+                continue
             }
-            if queue.contains(where: { $0.node == nextNode} ) {
-                return
+            if queue.contains(where: { $0.node == nextNode } ) {
+                continue
             }
             queue.append((nextNode, path))
         }
         visited[node] = path
+    }
+
+    // No possible path exists
+    return nil
+}
+
+func AStarFindShortestPath<Node: Hashable>(from start: Node, using getNextNodes: ((Node) -> [(node: Node, cost: Int)]?)) -> ([Node], Int)? {
+    typealias Path = [Node]
+    var visited: [Node: Int] = [:]
+    var queue: [Node: (path: Path, cost: Int)] = [start: ([], 0)]
+
+    while let (node, (path, currentCost)) = queue.min(by: { $0.value.cost < $1.value.cost}) {
+        queue.removeValue(forKey: node)
+        guard let nextNodes = getNextNodes(node) else {
+            return (path + [node], currentCost)
+        }
+        let newPath = path + [node]
+        for (nextNode, cost) in nextNodes {
+            let newCost = currentCost + cost
+            if let previousCost = visited[nextNode], previousCost <= newCost {
+                continue
+            }
+            if let queued = queue[nextNode], queued.cost <= newCost {
+                continue
+            }
+            queue[nextNode] = (newPath, newCost)
+        }
+        visited[node] = currentCost
+    }
+
+    // No possible path exists
+    return nil
+}
+
+func AStarFindShortestDistance<Node: Hashable>(from start: Node, using getNextNodes: ((Node) -> [(node: Node, cost: Int)]?)) -> Int? {
+    var visited: [Node: Int] = [:]
+    var queue: [Node: Int] = [start: 0]
+
+    while let (node, currentCost) = queue.min(by: { $0.value < $1.value}) {
+        queue.removeValue(forKey: node)
+        guard let nextNodes = getNextNodes(node) else {
+            return currentCost
+        }
+        for (nextNode, cost) in nextNodes {
+            let newCost = currentCost + cost
+            if let previousCost = visited[nextNode], previousCost <= newCost {
+                continue
+            }
+            if let queuedCost = queue[nextNode], queuedCost <= newCost {
+                continue
+            }
+            queue[nextNode] = newCost
+        }
+        visited[node] = currentCost
     }
 
     // No possible path exists
@@ -170,8 +223,12 @@ func parse(data: [[String]]) -> (entrances: [String], keys: [String: Coordinate]
     for pair in keys.keys.pick(2) {
         let start = keys[pair[0]]!
         let end = keys[pair[1]]!
-        guard let path = BFSFindShortestPath(from: start, to: end, using: { coord in
-            return coord.neighbours.filter { Tile(value: data[$0.y][$0.x]) != .wall }
+        guard let path = BFSFindShortestPath(from: start, using: { coord in
+            if coord == end {
+                return nil
+            } else {
+                return coord.neighbours.filter { Tile(value: data[$0.y][$0.x]) != .wall }
+            }
         }) else {
             continue
         }
@@ -187,45 +244,32 @@ func parse(data: [[String]]) -> (entrances: [String], keys: [String: Coordinate]
 func collectTheKeys(in data: [[String]]) {
     struct State: Hashable {
         var location: String
-        var collectedKeys: Set<String>
+        var uncollectedKeys: Set<String>
     }
 
-    let (_, keys, distances) = parse(data: data)
-    var visited: [State: Int] = [:]
-    var queue: [State: Int] = [State(location: "entrance1", collectedKeys: []): 0]
+    let (entrances, keys, distances) = parse(data: data)
+    let start = State(location: entrances.first!, uncollectedKeys: Set(keys.keys).subtracting([entrances.first!]))
 
-    while let (state, currentStepCount) = queue.min(by: { $0.value < $1.value }) {
-        queue.removeValue(forKey: state)
-        var collectedKeys = state.collectedKeys
-        collectedKeys.insert(state.location)
-        if collectedKeys.count == keys.count {
-            print("Collected: \(collectedKeys) in \(currentStepCount) steps")
-            return
+    let cost = AStarFindShortestDistance(from: start) { state -> [(node: State, cost: Int)]? in
+//    let (path, cost) = AStarFindShortestPath(from: start) { state -> [(node: State, cost: Int)]? in
+        if state.uncollectedKeys.isEmpty {
+            return nil
         }
-        let uncollectedKeys = keys.keys.filter { !collectedKeys.contains($0) }
-        let nextStates = uncollectedKeys
-            .map { Pair(state.location, $0) }
-            .map { (pair: $0, distance: distances[$0]!.distance, requires: distances[$0]!.requires) }
-            .filter { tuple -> Bool in
-                let lockedDoors = tuple.requires.filter { uncollectedKeys.contains($0) }
-                return lockedDoors.isEmpty
+        return state.uncollectedKeys.compactMap { key in
+            let destination = distances[Pair(state.location, key)]!
+            let lockedDoors = destination.requires.filter { state.uncollectedKeys.contains($0) }
+            if lockedDoors.isEmpty {
+                let nextState = State(location: key, uncollectedKeys: state.uncollectedKeys.subtracting([key]))
+                return (nextState, destination.distance)
+            } else {
+                return nil
             }
-        for nextState in nextStates {
-            let newStepCount = currentStepCount + nextState.distance
-            var newState = state
-            newState.location = nextState.pair.a != state.location ? nextState.pair.a : nextState.pair.b
-            newState.collectedKeys = collectedKeys
-            if let previousStepCount = visited[newState], previousStepCount <= newStepCount {
-                continue
-            }
-            if let queuedStepCount = queue[newState], queuedStepCount <= newStepCount {
-                continue
-            }
-            queue[newState] = newStepCount
         }
-        visited[state] = currentStepCount
-    }
-    preconditionFailure()
+    }!
+
+//    let collectedKeys = path.map { $0.location }
+//    print("Collected: \(collectedKeys) in \(cost) steps")
+    print("Steps: \(cost)")
 }
 
 collectTheKeys(in: InputData.challenge)
@@ -235,61 +279,43 @@ collectTheKeys(in: InputData.challenge)
 func collectTheKeys2(in data: [[String]]) {
     struct State: Hashable {
         var robotLocations: [String]
-        var collectedKeys: Set<String>
+        var uncollectedKeys: Set<String>
     }
 
     let (entrances, keys, distances) = parse(data: data)
-    let start = State(robotLocations: entrances, collectedKeys: [])
-    var visited: [State: Int] = [:]
-    var queue: [State: Int] = [start: 0]
+    let start = State(robotLocations: entrances, uncollectedKeys: Set(keys.keys).subtracting(entrances))
 
-    while let (state, currentStepCount) = queue.min(by: { $0.value < $1.value }) {
-        queue.removeValue(forKey: state)
-        var collectedKeys = state.collectedKeys
-        state.robotLocations.forEach{ collectedKeys.insert($0) }
-        if collectedKeys.count == keys.count {
-            print("Collected: \(collectedKeys) in \(currentStepCount) steps")
-            return
+    let cost = AStarFindShortestDistance(from: start) { state in
+        if state.uncollectedKeys.isEmpty {
+            return nil
         }
-        let uncollectedKeys = keys.keys.filter { !collectedKeys.contains($0) }
-        let nextStates = uncollectedKeys.compactMap { location -> (robotIndex: Int, key: String, distance: Int)? in
+        return state.uncollectedKeys.compactMap { key in
             for (robotIndex, robotLocation) in state.robotLocations.enumerated() {
-                if let path = distances[Pair(robotLocation, location)] {
-                    let lockedDoors = path.requires.filter { uncollectedKeys.contains($0) }
+                if let destination = distances[Pair(robotLocation, key)] {
+                    let lockedDoors = destination.requires.filter { state.uncollectedKeys.contains($0) }
                     if lockedDoors.isEmpty {
-                        return (robotIndex, location, path.distance)
+                        var nextState = state
+                        nextState.robotLocations[robotIndex] = key
+                        nextState.uncollectedKeys.remove(key)
+                        return (nextState, destination.distance)
                     }
                 }
             }
             return nil
         }
-        for nextState in nextStates {
-            let newStepCount = currentStepCount + nextState.distance
-            var newState = state
-            newState.robotLocations[nextState.robotIndex] = nextState.key
-            newState.collectedKeys = collectedKeys
-            if let previousStepCount = visited[newState], previousStepCount <= newStepCount {
-                continue
-            }
-            if let queuedStepCount = queue[newState], queuedStepCount <= newStepCount {
-                continue
-            }
-            queue[newState] = newStepCount
-        }
-        visited[state] = currentStepCount
-    }
-    preconditionFailure()
+    }!
+
+    print("Steps: \(cost)")
 }
 
 // Faster!
 func collectTheKeys3(in data: [[String]]) {
     struct State: Hashable {
         var location: String
-        var collectedKeys: Set<String>
+        var uncollectedKeys: Set<String>
     }
 
     let (entrances, keys, distances) = parse(data: data)
-    let allKeys = Set(keys.keys)
     let keysInEachQuad = entrances.map { entrance in
         return Set(keys.keys.compactMap { key -> String? in
             guard distances[Pair(entrance, key)] != nil else { return nil }
@@ -299,45 +325,27 @@ func collectTheKeys3(in data: [[String]]) {
 
     var totalSteps = 0
     zip(entrances, keysInEachQuad).forEach { entrance, reachableKeys in
-        let start = State(location: entrance, collectedKeys: allKeys.subtracting(reachableKeys))
-        var visited: [State: Int] = [:]
-        var queue: [State: Int] = [start: 0]
-
-        while let (state, currentStepCount) = queue.min(by: { $0.value < $1.value }) {
-            queue.removeValue(forKey: state)
-            var collectedKeys = state.collectedKeys
-            collectedKeys.insert(state.location)
-            if collectedKeys.count == keys.count {
-                totalSteps += currentStepCount
-                return
+        let start = State(location: entrance, uncollectedKeys: reachableKeys)
+        let cost = AStarFindShortestDistance(from: start) { state -> [(node: State, cost: Int)]? in
+            if state.uncollectedKeys.isEmpty {
+                return nil
             }
-            let uncollectedKeys = keys.keys.filter { !collectedKeys.contains($0) }
-            let nextStates = uncollectedKeys
-                .map { Pair(state.location, $0) }
-                .map { (pair: $0, distance: distances[$0]!.distance, requires: distances[$0]!.requires) }
-                .filter { tuple -> Bool in
-                    let lockedDoors = tuple.requires.filter { uncollectedKeys.contains($0) }
-                    return lockedDoors.isEmpty
+            return state.uncollectedKeys.compactMap { key in
+                let destination = distances[Pair(state.location, key)]!
+                let lockedDoors = destination.requires.filter { state.uncollectedKeys.contains($0) }
+                if lockedDoors.isEmpty {
+                    let nextState = State(location: key, uncollectedKeys: state.uncollectedKeys.subtracting([key]))
+                    return (nextState, destination.distance)
+                } else {
+                    return nil
                 }
-            for nextState in nextStates {
-                let newStepCount = currentStepCount + nextState.distance
-                var newState = state
-                newState.location = nextState.pair.a != state.location ? nextState.pair.a : nextState.pair.b
-                newState.collectedKeys = collectedKeys
-                if let previousStepCount = visited[newState], previousStepCount <= newStepCount {
-                    continue
-                }
-                if let queuedStepCount = queue[newState], queuedStepCount <= newStepCount {
-                    continue
-                }
-                queue[newState] = newStepCount
             }
-            visited[state] = currentStepCount
-        }
-        preconditionFailure()
+        }!
+        totalSteps += cost
     }
 
     print("Collected all the keys in \(totalSteps) steps")
 }
 
+//collectTheKeys2(in: InputData.challenge2)
 collectTheKeys3(in: InputData.challenge2)
