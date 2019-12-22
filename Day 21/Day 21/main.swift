@@ -30,8 +30,6 @@ WALK\n
 // MARK: Part 2
 
 // !(A & B & C) & (!A | (D & H))
-// !(A & B & C) & ((!A | D) & (!A | H))
-
 // !(A & B & C) & (D & H) | !(A & B & C) & !A
 //           T            | !(A & B & C | A)
 
@@ -55,7 +53,7 @@ var hullDamage: Int = -1
 
 let springdroid = IntCodeComputer(program: InputData.challenge, input: { part2Input.removeFirst() }) { value in
 
-    if value >= 127 {
+    if value >= 0xFF {
         hullDamage = value
     } else {
         print(Character(UnicodeScalar(value)!), terminator: "")
