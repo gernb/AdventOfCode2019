@@ -60,50 +60,57 @@ techniques.forEach { $0.apply(to: &deck) }
 
 print(deck.firstIndex(of: 2019)!)
 
-// MARK: Part 2 - Incomplete
+// MARK: Part 2 - Implementing algorithm described here -> https://www.reddit.com/r/adventofcode/comments/ee0rqi/2019_day_22_solutions/fbnifwk
+
+func power(_ x: BInt, _ y: BInt, _ m: BInt) -> BInt {
+    if y == 0 { return 1 }
+    var p = power(x, y / 2, m) % m
+    p = (p * p) % m
+    return y.isEven() ? p : (x * p) % m
+}
+
+func primeModInverse(_ a: BInt, _ m: BInt) -> BInt {
+    return power(a, m - 2, m)
+}
 
 extension Technique {
-    func apply2(to cardPosition: Int, in deckSize: Int) -> Int {
+    func applyInverse(to cardPosition: inout BInt, in deckSize: BInt) {
         switch self {
         case .dealNewStack:
-            return deckSize - 1 - cardPosition
+            cardPosition = deckSize - 1 - cardPosition
 
         case .cut(let count):
-            let n = count < 0 ? deckSize + count : count
-            if cardPosition < n {
-                return deckSize - (n - cardPosition)
-            } else {
-                return cardPosition - n
-            }
+            cardPosition = (cardPosition + BInt(count) + deckSize) % deckSize
 
         case .dealWithIncrement(let inc):
-            return (cardPosition * inc) % deckSize
-        }
-    }
-
-    func apply3(index: inout Int, deckSize: Int) {
-        switch self {
-        case .dealNewStack:
-            index = (deckSize - 1) - index
-
-        case .cut(let count):
-            let n = count < 0 ? deckSize + count : count
-            index = (index + n) % deckSize
-
-        case .dealWithIncrement(let inc):
-            index = ((index * inc) + index) % deckSize
+            cardPosition = primeModInverse(BInt(inc), deckSize) * cardPosition % deckSize
         }
     }
 }
 
-let cardCount = 119315717514047
-let repeatCount = 101741582076661
-var index = 2020
+let D = BInt(119315717514047) // deck size
+let n = BInt(101741582076661) // number of repititions
+var X = BInt(2020)
 
-for _ in 1 ... repeatCount {
-    for t in techniques {
-        t.apply3(index: &index, deckSize: cardCount)
-    }
-}
+/*
+ X = 2020
+ Y = f(X)
+ Z = f(Y)
+ A = (Y-Z) * modinv(X-Y+D, D) % D
+ B = (Y-A*X) % D
+ */
 
-print(index)
+var Y = X
+techniques.reversed().forEach { $0.applyInverse(to: &Y, in: D) }
+var Z = Y
+techniques.reversed().forEach { $0.applyInverse(to: &Z, in: D) }
+let A = (Y - Z) * primeModInverse(X - Y + D, D) % D
+let B = (Y - A * X) % D
+
+/*
+ answer = (pow(A, n, D)*X + (pow(A, n, D)-1) * modinv(A-1, D) * B) % D
+ */
+
+let answer = (power(A, n, D) * X + (power(A, n, D) - 1) * primeModInverse(A - 1, D) * B) % D
+
+print(answer)
