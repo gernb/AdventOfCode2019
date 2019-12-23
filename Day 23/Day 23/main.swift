@@ -22,9 +22,8 @@ func inputProvider(id: Int) -> Int {
     }
 }
 
+var firstNATpacket = true
 var currentNATpacket = [0, 0]
-var yValues = Set<Int>()
-let group = DispatchGroup()
 
 let nics = (0 ..< 50).map { id -> IntCodeComputer in
     var outputBuffer = [Int]()
@@ -35,6 +34,10 @@ let nics = (0 ..< 50).map { id -> IntCodeComputer in
             let xy = outputBuffer.dropFirst()
             if address == 255 {
                 objc_sync_enter(lock)
+                if firstNATpacket {
+                    print(xy)
+                    firstNATpacket = false
+                }
                 currentNATpacket = Array(xy)
                 objc_sync_exit(lock)
             } else {
@@ -48,13 +51,17 @@ let nics = (0 ..< 50).map { id -> IntCodeComputer in
     }
 }
 
+var yValues = Set<Int>()
+let group = DispatchGroup()
+group.enter()
+
 // NAT monitor
 DispatchQueue.global().async {
     repeat {
-        sleep(1)
+        usleep(100_000)
         objc_sync_enter(lock)
-        let allEmpty = inputQueues.reduce(true) { $0 && $1.isEmpty }
-        if allEmpty {
+        let isIdle = inputQueues.reduce(true) { $0 && $1.isEmpty }
+        if isIdle {
             if yValues.contains(currentNATpacket[1]) {
                 print(currentNATpacket)
                 group.leave()
@@ -66,7 +73,6 @@ DispatchQueue.global().async {
     } while true
 }
 
-group.enter()
 for nic in nics {
     DispatchQueue.global().async {
         nic.run()
