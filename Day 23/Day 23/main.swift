@@ -58,7 +58,7 @@ group.enter()
 // NAT monitor
 DispatchQueue.global().async {
     repeat {
-        usleep(100_000)
+        usleep(50_000)
         objc_sync_enter(lock)
         let isIdle = inputQueues.reduce(true) { $0 && $1.isEmpty }
         if isIdle {
@@ -75,6 +75,7 @@ DispatchQueue.global().async {
 
 for nic in nics {
     DispatchQueue.global().async {
+        usleep(5000)    // Not sure why delaying the `run` command helps speed up things, but it does
         nic.run()
     }
 }
