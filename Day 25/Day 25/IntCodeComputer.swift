@@ -8,7 +8,7 @@
 import Foundation
 
 final class IntCodeComputer {
-    private let inputProvider: (() -> Int)
+    private let inputProvider: (() -> Int?)
     private let outputHandler: ((Int) -> Bool)
     private let program: [Int]
 
@@ -18,11 +18,12 @@ final class IntCodeComputer {
 
     enum State {
         case halted
+        case inputNeeded
         case stopRequested
         case invalidInstruction
     }
 
-    init(program: [Int], input: @escaping (() -> Int), output: @escaping ((Int) -> Bool)) {
+    init(program: [Int], input: @escaping (() -> Int?), output: @escaping ((Int) -> Bool)) {
         self.inputProvider = input
         self.outputHandler = output
         self.program = program
@@ -60,7 +61,8 @@ final class IntCodeComputer {
 
             case 3: // input
                 let param1 = self[ip + 1]
-                self[param1, instruction.p1Mode] = inputProvider()
+                guard let input = inputProvider() else { return .inputNeeded }
+                self[param1, instruction.p1Mode] = input
                 ip += 2
 
             case 4: // output
